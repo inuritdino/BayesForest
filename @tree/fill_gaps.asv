@@ -1,0 +1,729 @@
+function obj = fill_gaps(obj, varargin)
+% Function tries to fit additional cylinders in the gaps between the
+% current cylinders. First the function searches for extension type gaps
+% and then gaps between a branch and its parent. The added cylinders from
+% the first cycle are used in the second. 
+%
+% The function accepts multiple additional parameters. The paremeters are
+% given in name-value -pairs if not stated otherwise. The names are not
+% case-sensitive. If the function does not understand a given parameter
+% name it informs the user with a message.
+%
+% Possible parameters:
+% 'Debug'                   Enable debug mode. Debug information is
+%                           printed to the command window or in figures.
+%                           This parameter does not need a following value.
+% 'Edge'                    Set the edge length for the partitioning. If
+%                           the parameter is not given the function tries
+%                           to estimate a good value from the data.
+% 'AreaSize' or 'hf'        Defines from how far the function tries to find
+%                           candidate cylinders for fitting. The value
+%                           should be an integer.
+% 'ExtAreaSize' or 'hf1'    Same as the previous but for the extension type
+%                           search only.
+% 'BranchAreaSize or 'hf2'  As before but for the parent-branch type search
+%                           only.
+% 'MinLength'               Defines the minimum length for a cylinder to be
+%                           fitted. If the gap between two cylinders is
+%                           smaller than this value no cylinder is fitted
+%                           between them.
+% 'ExtOnly' or              Only execute the extension type fitting. This 
+%         'ExtensionsOnly'  parameter does not need a following value.
+% 'BpOnly' or               Only execute the parent-branch type fitting.
+%         'BranchesOnly'    This parameter does not need a following value.
+% 'Confirmation'            Defines whether the user should be consulted
+%                           during the fitting process. The parameter has
+%                           two valid values:
+%                           'End'   Ask for the input once all cylinders
+%                                   have been fitted. The user has the
+%                                   options to accept all discard all
+%                                   fitted cylinders.
+%                           'All'   Confirmation is asked after every
+%                                   fitting. In this case the user has the
+%                                   options to accept or discard individual
+%                                   cylinders.
+%
+% Examples:
+%
+% Ttree.fill_gaps('Debug')
+% Ttree.fill_gaps('Confirmation', 'All')
+% Ttree.fill_gaps('Edge' ,0.05, 'MinLength', 0.4, 'Hf', 5)
+
+%% Default values of the parameters
+
+% Print debug information.
+debug = false;
+
+% Analyse branch-parent type connections.
+branches = true;
+
+% Analyse extension type connections.
+extensions = true;
+
+% Confirmations: User has two possiblities, accept (y) or discard (n) the
+% fitted cylinder(s). 
+
+% Ask for confirmation after all the cylinders have been analysed and
+% cylinder fitted. Only one confirmation is done at the end.
+conf_end = false;
+
+% Ask for confirmation after every single cylinder fitting.
+conf_all = false;
+
+% Paramater tells how far to look for a gap. The unit is
+% cubes in the partitioning. <hf1> is for the extensions and
+% <hf2> is for the branch-parent connections.
+hf1 = 3;
+hf2 = 5;
+
+% Number of branches before the possible new fitted
+% branches.
+n = obj.number_of_branches;
+
+% Save original branch number to determine whether new branches were
+% fitted.
+nn = n;
+
+% Edge size of the cubes of the partitioning.
+r = 0.55*min(obj.length(1:n));
+% r = min(r, 0.95*min(obj.length(1:n)));
+% r = sqrt(2)*minimum_length;
+% r = minimum_length;
+
+% This constant parameter defines how small in length a
+% fitted cylinder can be.
+minimum_length = min(obj.length(1:n))/5;
+% minimum_length = 1.1*r;
+
+%% Process additional arguments.
+i = 1;
+while i <= size(varargin,2)
+
+    if ischar(varargin{i})
+
+        switch lower(varargin{i})
+            case 'debug'
+                debug = true;
+            case 'edge'
+                r = varargin{i+1};
+                i = i + 1;
+            case {'areasize','hf'}
+                hf1 = varargin{i+1};
+                hf2 = hf1;
+                i = i + 1;
+            case {'extareasize','hf1'}
+                hf1 = varargin{i+1};
+                i = i + 1;
+            case {'branchareasize','hf2'}
+                hf2 = varargin{i+1};
+                i = i + 1;
+            case 'minlength'
+                minimum_length = varargin{i+1};
+                i = i + 1;
+            case {'extonly','extensionsonly'}
+                branches = false;
+                extensions = true;
+            case {'bponly','branchesonly'}
+                branches = true;
+                extensions = false;
+            case 'confirmation'
+                if i < size(varargin,2) && ischar(varargin{i+1})
+                    switch lower(varargin{i+1})
+                        case 'end'
+                            conf_end = true;
+                            i = i + 1;
+                        case 'all'
+                            conf_all = true;
+                            i = i + 1;
+                    end
+                end
+            otherwise
+                disp(['Ignoring unknown parameter: ' varargin{i}]);
+        end
+    end
+    i = i + 1;
+end
+
+% obj_min_l = min(obj.length(1:n))
+% r
+% minimum_length
+
+%% SEARCH EXTENSIONS
+% This part searches extension for the cylinder. The
+% search area is located from the end point outwards.
+if extensions
+
+    % Collect start and end points of the branches. The
+    % resulting matrix is [<start points>; <end points>] and it
+    % has a dimension [2n x 3].
+    points = zeros(2*n,3);
+    points(1:n,:) = obj.start_point(1:n,:);
+    points(n+1:end,:) = obj.end_point(1:n,:);
+
+    % Partition the points into cubes to find canditates for the
+    % fitting process.
+    [partition,cc,~,~] = partition_of_point_cloud(points,r);
+
+    % Number of the cubes.
+    s = size(partition);
+
+    % Go through all the cylinders.
+    for i = 1:n
+        % Cube number of the starting point of the cylinder.
+        spc = cc(i,1:3);
+        % Cube number of the end point of the cylinder.
+        epc = cc(i+n,1:3);
+        
+        % Slope in 3D.
+        K = epc-spc;
+        
+        % If the start and end point are in the same cube, use the actual
+        % axis direction of the cylinder.
+        if not(any(K))
+            K = obj.axis(i,:);
+        end
+
+        % Select cubes of the partition to be searched for
+        % candidate cylinders.
+        if debug
+            [b kk] = search_area(s, r, obj.radius(i), obj.length(i), K, epc, hf1);
+            
+            jj = kk([1 2 3 4 1 8 5 6 7 8 7 2 3 6 5 4],:);
+
+            figure(1)
+            hold off
+            jjj = [spc; epc];
+            plot3(jjj(:,1),jjj(:,2),jjj(:,3),'-r')
+            hold on;
+            plot3(epc(1),epc(2),epc(3),'*r')
+
+            plot3(jj(:,1),jj(:,2),jj(:,3),'-*b')
+            plot3(b(:,1),b(:,2),b(:,3),'*g')
+            plot3(cc(i,1),cc(i,2),cc(i,3),'ok')
+            plot3(cc(setdiff(1:n,i),1),cc(setdiff(1:n,i),2),cc(setdiff(1:n,i),3),'or')
+            plot3(cc(setdiff(1:n,i)+n,1),cc(setdiff(1:n,i)+n,2),cc(setdiff(1:n,i)+n,3),'or')
+            xlabel('x')
+            ylabel('y')
+            zlabel('z')
+            axis equal;
+            title(['Ext: Point ' num2str(i)])
+            pause;
+        else
+            b = search_area(s, r, obj.radius(i), obj.length(i), K, epc, hf1);
+        end
+
+        % Possible point indexes. Select all point indexes in
+        % the cubes defined above.
+        pp = [];
+        for j = 1:size(b,1)
+            pp = [pp; vertcat(partition{b(j,1),b(j,2),b(j,3)})];
+        end
+
+        % Select only start points by converting end points to
+        % start points. So if a selected point is an end point
+        % select the corresponding start point. Remove
+        % dublicates and the current point <i> itself.
+        pp(pp > n) = pp(pp > n) - n;
+        pp = unique(pp);
+        pp = setdiff(pp,i);
+
+        % If any indexes remain do further analysis.
+        if any(pp)
+
+            % Compute the distance and type of distance between
+            % the start...
+            [d1 t1] = distance_to_cylinder(points(pp,:), ...
+                                     obj.radius(i), obj.length(i), ...
+                                     obj.axis(i,:), obj.start_point(i,:));
+
+            % ... and end points of the candidate cylinders and
+            % the selected cylinder <i>.
+            [d2 t2] = distance_to_cylinder(points(pp+n,:), ...
+                                     obj.radius(i), obj.length(i), ...
+                                     obj.axis(i,:), obj.start_point(i,:));
+
+            % Minimum of the distances for each cylinder is
+            % used.
+            d = min(d1,d2);
+
+            % Compute angle between the selected cylinder <i>
+            % and the candidate cylinders.
+            a = (obj.axis(i,:)*(obj.axis(pp,:))')';
+
+            % Select indexes that are not too close but not too
+            % far either.
+            Dn = d >= minimum_length; 
+            Df = d <= obj.length(i)*1.5;
+
+            % Parallel enough.
+            Pa = a >= 0.85;
+
+            % Similar radius.
+            Rs = abs(1-obj.radius(pp)./obj.radius(i)) <= 0.6;
+
+            % Condition for stopping analysis for cylinder <i>.
+            % - Some cylinder is too close in front of <i>.
+            % - Cylinder has similar radius.
+            M = not(Dn) | (Rs & or(t1 == 2,t2 == 2));
+
+            % If there is a point "blocking" the way move to
+            % next cylinder <i+1>.
+            if any(M) 
+                continue;
+            end
+
+            % Conditions for extension.
+            E = Dn & Df & Pa & Rs;
+
+            % If any indexes passed the conditions start the
+            % extension fitting process.
+            if any(E)
+
+                % If multiple possibilities choose the closest.
+                if nnz(E) > 1
+                    [~, E] = min(d(E));
+                end
+
+                % Index of the passed cylinder.
+                j = pp(E);
+
+                % Check which of the extreme points of the
+                % cylinder <j> was closer to the selected
+                % cylinder <i>. If the start point was closer
+                % use the axis of the cylinder <j>. Otherwise
+                % use -1*axis. <cp> is the closest point.
+                if d1(E) < d2(E)
+                    cp = obj.start_point(j,:);
+                    ca = obj.axis(j,:);
+                else
+                    cp = obj.end_point(j,:);
+                    ca = -obj.axis(j,:);
+                end
+
+                % Construct the parameters of the new cylinder.
+
+                % New radius if the mean of the radii of <i> and
+                % <j>.
+                nr = mean(obj.radius([i,j]),1);
+
+                % Height is the distance between the cylinder
+                % <i> and the closer extreme point of <j> scaled
+                % with the angle between the the axis. This
+                % tries to minimize the overlapping of the
+                % cylinders.
+                nh = a(E)*d(E);
+                
+                if nh < 0 
+                    a(E)
+                    d(E)
+                end
+
+                % New axis is defined as a weighted sum of the 
+                % two axis. Note tha <ca> can be -1*<axis j>.
+                cof = 0.8;
+                na = cof*obj.axis(i,:) + (1-cof)*ca;
+
+                % Start point is computed as follows:
+                % Select mean of <end point i> and <cp>. Then
+                % move half of the cylinder height to the
+                % direction of the axis of the new cylinder.
+                np = mean([obj.end_point(i,:); cp],1) - 0.5*nh*na;
+
+                % If both <i> and <j> are trunk parts then the
+                % new cylinder is also part of the trunk.
+                nt = all(obj.is_trunk([i,j]));
+
+                % Add new branch to the tree.
+                obj = obj.add_branch(nr,nh,np,na,nt);
+                
+                % If confirmation is needed, draw a figure and ask for user
+                % input. Figure contains cylinder <i> in one color,
+                % accepted extension <pp(E)> in another and discarded
+                % extensions <pp(not(E))> in a third.
+                if conf_all
+
+                    figure(2)
+                    hold off;
+                    obj.draw_branches(i,'color',[0 0 1]);
+                    hold on;
+%                     obj.draw_branches(setdiff(1:n,[pp(:); i]),'color',[0.8 0.8 0.8]);
+
+                    % The following ensures grouped legend.
+                    heads = cell(1,2);
+                    groups = cell(1,2);
+
+                    heads{1} = obj.draw_branches(pp(E),'color',[0 1 0]);
+                    groups{1} = hggroup;
+                    nheads = 1;
+                    
+                    if any(not(E))
+                        heads{2} = obj.draw_branches(pp(not(E)),'color',[1 0 0]);
+                        groups{2} = hggroup;
+                        nheads = 2;
+                    end
+                    
+                    strs = {'Branch i','Possible extension','Excluded branches'};
+                    
+                    for j = 1:nheads
+                        
+                        set(heads{j},'Parent',groups{j});
+                        set(get(get(groups{j},'Annotation'),'LegendInformation'),...
+                            'IconDisplayStyle','on');
+                    end
+                    legend(strs{1:nheads+1})
+                    
+                    title(['Branch number i = ' num2str(i) '. Fit OK?']);
+                    
+                    axis equal;
+                    alpha(0.4);
+                    hold off;
+                    
+                    % Ask for user input. Possible answers 'y', 'Y', 'N' 
+                    % and 'n'.
+                    while true
+                        key = input('Is fit OK? (y) to save, (n) to discard. >> ','s');
+                        if lower(key) == 'y' 
+                            break;
+                        elseif lower(key) == 'n'
+                            obj = obj.remove_branch(1);
+                            break;
+                        end
+                    end
+                    
+                end
+            end
+        end
+
+    end
+end
+
+
+%% SEARCH PARENT FOR BRANCH
+% This part searches a parent for a branch. The parent
+% in this case is a cylinder that has a larger radius,
+% and is somewhat perpendicular to the branch and is
+% located somewhere behind the start point of the
+% branch. So in this case the search area is located on
+% the otherside compared to the extension search. 
+if branches
+
+    n = obj.number_of_branches;
+
+    % Collect start and end points of the branches. The
+    % resulting matrix is [<start points>; <end points>] and it
+    % has a dimension [2n x 3].
+    points = zeros(2*n,3);
+    points(1:n,:) = obj.start_point(1:n,:);
+    points(n+1:end,:) = obj.end_point(1:n,:);
+
+    % Partition the points into cubes to find canditates for the
+    % fitting process.
+    [partition,cc,~,~] = partition_of_point_cloud(points,r);
+
+    % Number of the cubes.
+    s = size(partition);
+
+    for i = 1:n
+
+        % This analysis is done only to the branch cylinders.
+        if obj.is_trunk(i)
+    %         disp('trunk')
+            continue;
+        end
+
+        % Cube number of the starting point of the cylinder.
+        spc = cc(i,1:3);
+        % Cube number of the end point of the cylinder.
+        epc = cc(i+n,1:3);
+        
+        % Slope in 3D.
+        K = spc-epc;
+        
+        % If the start and end points are in the same cube, use the actual
+        % axies direction of the cylinder.
+        if not(any(K))
+            K = obj.axis(i,:);
+        end
+
+        if debug
+            % Define search area.
+            [b kk] = search_area(s, r, obj.radius(i), obj.length(i), K, spc, hf2);
+            
+            jj = kk([1 2 3 4 1 8 5 6 7 8 7 2 3 6 5 4],:);
+
+        %     obj.draw_branches(i);
+            figure(1)
+            hold off
+            jjj = [spc; epc];
+            plot3(jjj(:,1),jjj(:,2),jjj(:,3),'-r')
+            hold on;
+            plot3(epc(1),epc(2),epc(3),'*r')
+
+            plot3(jj(:,1),jj(:,2),jj(:,3),'-*b')
+            plot3(b(:,1),b(:,2),b(:,3),'*g')
+            plot3(cc(i,1),cc(i,2),cc(i,3),'ok')
+            plot3(cc(setdiff(1:n,i),1),cc(setdiff(1:n,i),2),cc(setdiff(1:n,i),3),'or')
+            plot3(cc(setdiff(1:n,i)+n,1),cc(setdiff(1:n,i)+n,2),cc(setdiff(1:n,i)+n,3),'or')
+            xlabel('x')
+            ylabel('y')
+            zlabel('z')
+            axis equal;
+            title(['BP: Point ' num2str(i)])
+            hold off
+            pause;
+        else
+            b = search_area(s, r, obj.radius(i), obj.length(i), K, spc, hf2);
+        end
+
+        % Possible point indexes. Select all point indexes in
+        % the cubes defined above.
+        pp = [];
+        for j = 1:size(b,1)
+            pp = [pp; vertcat(partition{b(j,1),b(j,2),b(j,3)})];
+        end
+
+        % Select only start points by converting end points to
+        % start points. So if a selected point is an end point
+        % select the corresponding start point. Remove
+        % dublicates and the current point <i> itself.
+        pp(pp > n) = pp(pp > n) - n;
+        pp = unique(pp);
+        pp = setdiff(pp,i);
+
+        % If any indexes are found do further analysis.
+        if any(pp)
+
+            % Compute the distance and type of distance between
+            % the start...
+            [~, t1] = distance_to_cylinder(points(pp,:), ...
+                                     obj.radius(i), obj.length(i), ...
+                                     obj.axis(i,:), obj.start_point(i,:));
+
+            % ... and end points of the candidate cylinders and
+            % the selected cylinder <i>.
+            [~, t2] = distance_to_cylinder(points(pp+n,:), ...
+                                     obj.radius(i), obj.length(i), ...
+                                     obj.axis(i,:), obj.start_point(i,:));
+
+            % Compute also the shortest distance from the start
+            % point of cylinder <i> to the closest point of each
+            % candidate cylinder.
+            d = zeros(nnz(pp),1);
+            for j = 1:nnz(pp)
+
+                d(j) = distance_to_cylinder(points(i,:),obj.radius(pp(j)),...
+                       obj.length(pp(j)),obj.axis(pp(j),:),points(pp(j),:));
+            end
+
+
+            % Compute angle between the selected cylinder <i>
+            % and the candidate cylinders.
+            a = (obj.axis(i,:)*(obj.axis(pp,:))')';
+
+            % Select indexes that are not too close but not too
+            % far either.
+            Dn = d >= minimum_length;  %obj.length(i)*0.05
+            Df = d <= obj.length(i)*1.5;
+
+            % Perpendicular enough
+            Pe = abs(a) <= 0.6;
+
+            % Similar radius.
+            Rs = abs(1-obj.radius(pp)./obj.radius(i)) <= 0.4;
+
+            % Radius of candidate is larger than radius of <i>.
+            Rd = obj.radius(pp)./obj.radius(i) - 1 >= 0.1;
+
+            % Condition for stopping analysis for cylinder <i>.
+            % - Some cylinder is too close in front of <i>.
+            % - Cylinder has similar radius.
+            M = Rs & not(Dn);% & or(t1 == 2,t2 == 2);
+
+            % If there is a point "blocking" the way move to
+            % next cylinder <i+1>.
+            if any(M) 
+                continue;
+            end
+
+            % Condition for branch-parent connection.
+            B = Dn & Df & Rd & Pe & (t1 > 1) & (t2 > 1);
+
+            % If any indexes passed the conditions start the
+            % extension fitting process.
+            if any(B)
+                % Safe percentege.
+                sp = 0.02;
+
+                k = find(B);
+                for j = 1:length(k)
+
+    %                 dj = distance_to_cylinder(obj.start_point(i,:),...
+    %                          obj.radius(pp(k(j))), obj.length(pp(k(j))), ...
+    %                          obj.axis(pp(k(j)),:), obj.start_point(pp(k(j)),:));
+
+                    % Compute sine of the angle between the axes of the
+                    % cylinders <i> and <pp(k(j))>.
+                    sine = norm(cross(obj.axis(i,:),obj.axis(pp(k(j)),:)));
+                    
+                    % Compute the start point of the possibly created
+                    % cylinder and check how is it positioned relative to
+                    % the cylinder <pp(k(j))>.
+                    sinepoint = obj.start_point(i,:) ...
+                                - (1-sp)*obj.axis(i,:)*d(k(j))/sine;
+
+                    % Compute the distance type of the <sinepoint> from the
+                    % cylinder <pp(k(j))>.
+                    [~, tj] = distance_to_cylinder(...
+                        sinepoint,...
+                        obj.radius(pp(k(j))), obj.length(pp(k(j))), ...
+                        obj.axis(pp(k(j)),:), obj.start_point(pp(k(j)),:));
+
+                    % If distance type is 1, which means that the
+                    % <sinepoint> is vertically between the start and end
+                    % point of the cylinder <pp(k(j))>.
+                    if tj == 1
+                        % Construct the parameters of the new cylinder.
+                        
+                        % Radius is a few percent larger than the radius of
+                        % the cylinder <i>.
+                        nr = (1+sp)*obj.radius(i);
+
+                        % Height is a few percent shorter than the distance
+                        % of the <sinepoint> from the start point of
+                        % cylinder <i>.
+                        nh = (1-sp)*d(k(j))/sine;
+                        
+                        if nh < 0 
+                            disp('bp')
+                            d(k(j))
+                            sine
+                            
+                        end
+
+                        % Axis direction is the same as the direction of
+                        % cylinder <i>.
+                        na = obj.axis(i,:);
+
+                        % Start point is the <sinepoint>.
+                        np = sinepoint;
+
+                        % The new branch is not part of the trunk since it
+                        % is the beginning of a new branch.
+                        nt = 0;
+
+                        % Add new branch to the tree.
+                        obj = obj.add_branch(nr,nh,np,na,nt);
+                        
+                        % If confirmation is needed, draw a figure and ask 
+                        % for user input. Figure contains cylinder <i> in
+                        % one color, accepted parent in another color and
+                        % possible rejected parents in a third color.
+                        if conf_all
+                            
+                            figure(2)
+                            B = pp(k(j));
+                            obj.draw_branches(i,'color',[0 0 1]);
+                            hold on;
+%                             obj.draw_branches(setdiff(1:n,[pp(:); i]),'color',[0.8 0.8 0.8]);
+
+                            % Ensure legend grouping.
+                            heads = cell(1,2);
+                            groups = cell(1,2);
+
+                            heads{1} = obj.draw_branches(B,'color',[0 1 0]);
+                            groups{1} = hggroup;
+                            nheads = 1;
+                            
+                            others = setdiff(pp,B);
+                            if any(others)
+                                heads{2} = obj.draw_branches(others,'color',[1 0 0]);
+                                groups{2} = hggroup;
+                                nheads = 2;
+                            end
+                            
+                            axis equal;
+                            alpha(0.4);
+                            hold off;
+                            title(['Branch number i = ' num2str(i) '. Fit OK?']);
+                            
+                            strs = {'Branch i','Possible parent','Excluded parents'};
+                    
+                            for ji = 1:nheads
+
+                                set(heads{ji},'Parent',groups{ji});
+                                set(get(get(groups{ji},'Annotation'),'LegendInformation'),...
+                                    'IconDisplayStyle','on');
+                            end
+                            legend(strs{1:nheads+1})
+                            
+                            while true
+                                key = input('Is fit OK? (y) to save, (n) to discard. >> ','s');
+                                if lower(key) == 'y' 
+                                    break;
+                                elseif lower(key) == 'n'
+                                    % If the user is not satisfied the new
+                                    % branch is removed from the tree.
+                                    obj = obj.remove_branch(1);
+                                    break;
+                                end
+                            end
+                            close(figure(2))
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+%% PLOT NEW TREE
+
+% Number of new branches.
+fitted = obj.number_of_branches - nn;
+
+% If any branches were fitted and confirmation is required, plot the whole
+% tree. The original branches are shown in one color and the new branches
+% in another.
+if fitted > 0 && (conf_end || conf_all)
+    figure
+    hold off;
+    oldh = obj.draw_branches(1:nn,'color',[0.6 0.2 0],'points',10);
+    hold on;
+    newh = obj.draw_branches(nn+1:obj.number_of_branches,'color',[0 1 0],'points',10);
+    hold off;
+    alpha(0.3);
+    axis equal;
+    
+    % Ensure grouped legend.
+    oldg = hggroup;
+    newg = hggroup;
+    
+    set(oldh,'Parent',oldg);
+    set(newh,'Parent',newg);
+    
+    set(get(get(oldg,'Annotation'),'LegendInformation'),...
+        'IconDisplayStyle','on'); 
+    set(get(get(newg,'Annotation'),'LegendInformation'),...
+        'IconDisplayStyle','on'); 
+    
+    legend('Original','Filled gaps')
+    
+    % Ask for confirmation.
+    if conf_end
+        title([num2str(fitted) ' branches fitted. Fit OK?']);
+        while true
+            key = input([num2str(fitted) ' branches fitted. Is fit OK? (y) to save, (n) to discard. >> '],'s');
+            if lower(key) == 'y' 
+                break;
+            elseif lower(key) == 'n'
+                % If user is not satisfied remove all the branches that
+                % have been fitted. 
+                obj = obj.remove_branch(fitted);
+                break;
+            end
+        end
+    end
+    
+    % Print a couple of empty lines for convenience.
+    disp(''); disp('');
+end

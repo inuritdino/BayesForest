@@ -1,0 +1,190 @@
+function BayesForest(input_file)
+% Optimize Stochastic Structure Model (SSM) to the Quantitative Structure
+% Model (QSM). The former is a simulated model, the latter is (usually) the
+% model of a real tree (data).
+
+%% Read the configuration file
+config = bf_process_input(input_file);
+
+%% Some preparations
+currDir = pwd;% remember current directory to return at the end
+cd(config.target_dir);% move to the target directory
+
+%% Define the input: scatter types, order etc.
+if(isempty(config.scatter))
+    scat = {'branch','segment'};
+else
+    scat = config.scatter;
+end
+if(isempty(config.order))
+    order = 1;
+else
+    order = config.order;
+end
+%% Load the data
+if(~isempty(config.qsm_mat_file))
+    [qsm_bra,qsm_seg,qsm_tree] = gen_scatter2(config.qsm_mat_file);
+elseif(~isempty(config.qsm_cyl_table) && ~isempty(config.qsm_br_table))
+    import_qsm_data(evalin('base',config.qsm_br_table),evalin('base',config.qsm_cyl_table),'temp.mat');
+    [qsm_bra,qsm_seg,qsm_tree] = gen_scatter2('temp.mat');
+    delete('temp.mat');
+else
+    error('Error: data (QSM) file is not specified.');
+end
+if(isempty(config.segment) && isempty(config.branch))
+    if(config.qsm_merge)
+        qsm_scatter = arrange_scatter(qsm_bra,qsm_seg,'scat',scat,...
+            'order',order,'merge');
+    else
+        qsm_scatter = arrange_scatter(qsm_bra,qsm_seg,'scat',scat,...
+            'order',order);
+    end
+else
+    if(config.qsm_merge)
+        qsm_scatter = arrange_scatter(qsm_bra,qsm_seg,'branch',config.branch,...
+            'segment',config.segment,'merge');
+    else
+        qsm_scatter = arrange_scatter(qsm_bra,qsm_seg,'branch',config.branch,...
+            'segment',config.segment);
+    end
+end
+%% Define the trial model
+ssm_fun = str2func(config.ssm_fun);
+ssm_fun_best = str2func(config.ssm_fun_best);
+%% Technical parameters for the GA
+InitRange = [config.ga_init_lb; config.ga_init_ub];
+LB = config.ga_lb;
+UB = config.ga_ub;
+
+DIM = length(LB);
+INTCON = config.ga_int_con;
+POPSIZE = config.ga_pop_size;
+ELITE = config.ga_elite;
+GENS = config.ga_gens;
+STALL = config.ga_stall;
+TOLFUN = config.ga_tol_fun;
+USEPAR = config.ga_use_par;
+VECT = 'off';
+OUTFUN = config.ga_out_fun;
+%% Technical parameters for the Distance
+STAT1D = config.dt_stat1d;
+DIRS = config.dt_dirs;
+SCALE = config.dt_scale;
+%% Optimize
+[X,F,Output, Problem, X0] = optim_call(qsm_scatter,ssm_fun,'nvars',DIM,...
+    'opts',{'PlotFcns',{@gaplotbestf,@gaplotdistance},'PopulationSize',POPSIZE,...
+    'EliteCount',ELITE,'Generations',GENS,'StallGenLimit',STALL,...
+    'PopInitRange',InitRange,'UseParallel',USEPAR,'Vectorized',VECT,...
+    'OutputFcns',OUTFUN,'TolFun',TOLFUN},...
+    'lb',LB,'ub',UB,'intcon',INTCON,'stat',STAT1D,'dirs',DIRS,'scale',SCALE);
+
+%% Run the best solution
+% if(isempty(config.ssm_fun_best))
+%     ssm_best_scatter = ssm_fun(X);
+% else
+%     ssm_best_scatter = ssm_fun_best(X);
+% end
+%% Create folder for the results
+t = clock;
+out_name = [num2str(t(3)) '.' num2str(t(2)) '.' num2str(t(1)) '_' ...
+    num2str(t(4)) '.' num2str(t(5))];
+mkdir(out_name);
+%% Plot the trees
+%%% Make the final movie
+if(config.movie)
+    mov = optim_plot_generations(config.ga_out_dat,ssm_fun_best,qsm_tree);
+    copyfile(config.ga_out_dat,out_name);% copy gaOut.dat file to the result folder
+    cd(out_name);% from now on we are in the final results directory
+    obj = VideoWriter('gaMov.avi');
+    obj.FrameRate = 0.5;% 2 sec between frames, nice looking
+    open(obj);
+    writeVideo(obj,mov);
+    close(obj);
+else
+    %%%
+    qsm_tree = qsm_tree.move_tree([0 0 0]);
+    [xmin0,xmax0,ymin0,ymax0,zmax0] = span(qsm_tree);
+    ssm_fun_best(X);
+    ssm_tree = read_mtg('out.mtg');% must be encoded in config
+    ssm_tree = ssm_tree.move_tree([0 0 0]);
+    [xmin1,xmax1,ymin1,ymax1,zmax1] = span(ssm_tree);
+    %%%
+    figure('position',[100 100 1000 500]);
+    subplot(221);
+    qsm_tree.draw;
+    view(0,0);% SIDE view of the data
+    xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
+    zlim([0 max(zmax0,zmax1)]);
+    subplot(222);
+    ssm_tree.draw;
+    view(0,0);% SIDE view of the model
+    xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
+    zlim([0 max(zmax0,zmax1)]);
+    subplot(223);
+    qsm_tree.draw;
+    view(0,90);% TOP view of the data
+    xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
+    ylim([min(ymin0,ymin1) max(ymax0,ymax1)]);
+    subplot(224);
+    ssm_tree.draw;
+    view(0,90);% TOP view of the model
+    xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
+    ylim([min(ymin0,ymin1) max(ymax0,ymax1)]);
+    %%%
+    copyfile(config.ga_out_dat,out_name);% copy gaOut.dat file to the result folder
+    cd(out_name);% we are in the final results folder
+    saveas(gcf,'trees.tif');
+end
+%% Finalize
+% Save the results
+save('bf_out.mat','X','ssm_fun','ssm_fun_best','Problem','Output');
+% Copy the input configuration file
+copyfile([currDir '/' input_file]);% copy the input configuration to the results folder
+% Save genetic algorithm figure
+hall = findall(0,'type','figure');
+saveas(hall(strcmp({hall(:).Name},'Genetic Algorithm')),'ga');
+fprintf('The output directory:\n%s\n',pwd);% report the results folder
+cd(currDir);% move back to the original directory.
+end
+
+function [xmin,xmax,ymin,ymax,zmax] = span(tr)
+% Find the span in directions
+ADDUP = 0.5;
+if(min(tr.end_point(:,1)) < min(tr.start_point(:,1)))
+    [~,xmin] = min(tr.end_point(:,1));
+    xmin = tr.end_point(xmin,1) - ADDUP;
+else
+    [~,xmin] = min(tr.start_point(:,1));
+    xmin = tr.start_point(xmin,1) - ADDUP;
+end
+if(max(tr.end_point(:,1)) > max(tr.start_point(:,1)))
+    [~,xmax] = max(tr.end_point(:,1));
+    xmax = tr.end_point(xmax,1) + ADDUP;
+else
+    [~,xmax] = max(tr.start_point(:,1));
+    xmax = tr.start_point(xmax,1) + ADDUP;
+end
+
+if(min(tr.end_point(:,2)) < min(tr.start_point(:,2)))
+    [~,ymin] = min(tr.end_point(:,2));
+    ymin = tr.end_point(ymin,2) - ADDUP;
+else
+    [~,ymin] = min(tr.start_point(:,2));
+    ymin = tr.start_point(ymin,2) - ADDUP;
+end
+if(max(tr.end_point(:,2)) > max(tr.start_point(:,2)))
+    [~,ymax] = max(tr.end_point(:,2));
+    ymax = tr.end_point(ymax,2) + ADDUP;
+else
+    [~,ymax] = max(tr.start_point(:,2));
+    ymax = tr.start_point(ymax,2) + ADDUP;
+end
+
+if(max(tr.end_point(:,3)) > max(tr.start_point(:,3)))
+    [~,zmax] = max(tr.end_point(:,3));
+    zmax = tr.end_point(zmax,3) + ADDUP;
+else
+    [~,zmax] = max(tr.start_point(:,3));
+    zmax = tr.start_point(zmax,3) + ADDUP;
+end
+end

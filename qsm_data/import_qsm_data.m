@@ -27,17 +27,17 @@ else
 end
 BOrd = A(:,1);
 BPar = A(:,2);
-BVol = A(:,3);
-BLen = A(:,4);
-BAng = A(:,5);
+BVol = A(:,3);%l
+BLen = A(:,4);%cm or m
+BAng = A(:,5);%deg
 clear A;
 if(isa(cyl_data_table,'char'))
     A = importdata(cyl_data_table);
 else
     A = cyl_data_table;
 end
-Rad = A(:,1);
-Len = A(:,2);
+Rad = A(:,1);%m
+Len = A(:,2);%m
 Sta = [A(:,3) A(:,4) A(:,5)];
 Axe = [A(:,6) A(:,7) A(:,8)];
 CPar = A(:,9);

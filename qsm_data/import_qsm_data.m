@@ -37,7 +37,7 @@ else
     A = cyl_data_table;
 end
 Rad = A(:,1);%m
-Len = A(:,2);%m
+Len = A(:,2);%cm or m
 Sta = [A(:,3) A(:,4) A(:,5)];
 Axe = [A(:,6) A(:,7) A(:,8)];
 CPar = A(:,9);

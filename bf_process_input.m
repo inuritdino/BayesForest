@@ -5,10 +5,12 @@ conf = struct('target_dir','.','scatter','segment','order',1,'qsm_mat_file',[],.
     'qsm_cyl_table',[],'qsm_br_table',[],'segment',[],'branch',[],...
     'ssm_fun',[],'ga_init_lb',[],'ga_init_ub',[],'ga_lb',[],'ga_ub',[],'ga_int_con',[],...
     'ga_pop_size',[],'ga_gens',[],'ga_stall',[],'ga_elite',[],...
-    'dt_stat1d',1,'dt_dirs',100,'dt_scale',false,...
+    'dt_stat1d',1,'dt_dirs',100,'dt_scale',false,'dt_w',[],...
     'ssm_tree_fun','@()read_mtg(''out.mtg'')','ga_out_dat','gaOut.dat',...
-    'ga_use_par',0,'ssm_fun_best',[],'movie',true,'qsm_merge',false,'ga_out_fun',[],...
-    'ga_tol_fun',1e-6);
+    'ga_use_par',0,'ga_rng',[],'ssm_fun_best',[],'movie',true,'qsm_merge',false,'ga_out_fun',[],...
+    'ga_tol_fun',1e-6,'ga_multi',0);
+
+fprintf('Start processing ''%s''...',input_file);
 
 fid = fopen(input_file,'r');
 
@@ -22,7 +24,7 @@ while(ischar(line))
         C = textscan(line,'%s','delimiter','=');% process line
         left = C{1}{1}; left = strtrim(left);% left with no spaces
         right = C{1}{2}; right = strtrim(right);% right, no spaces
-        fprintf('Read: `%s'' = `%s''\n',left,right);
+        %fprintf('Read: `%s'' = `%s''\n',left,right);
         conf = write_conf(left,right,conf);% save to the conf
     end
     line = fgetl(fid);
@@ -30,6 +32,7 @@ while(ischar(line))
 end
 
 fclose(fid);
+fprintf('Done.\n');
 end
 
 function line = get_continued(fid,line)
@@ -78,12 +81,12 @@ elseif(strcmpi(left,'ssm_fun'))
 elseif(strcmpi(left,'ssm_fun_best'))
     conf.ssm_fun_best = right;
 elseif(strcmpi(left,'ga_init_lb'))
-    C = textscan(right,'%s','delimiter',',');
+    C = textscan(right,'%s','delimiter',', ','MultipleDelimsAsOne',true);
     for ii = 1:length(C{1})
         conf.ga_init_lb = cat(2,conf.ga_init_lb,str2double(strtrim(C{1}{ii})));
     end
 elseif(strcmpi(left,'ga_init_ub'))
-    C = textscan(right,'%s','delimiter',',');
+    C = textscan(right,'%s','delimiter',', ','MultipleDelimsAsOne',true);
     for ii = 1:length(C{1})
         conf.ga_init_ub = cat(2,conf.ga_init_ub,str2double(strtrim(C{1}{ii})));
     end
@@ -120,13 +123,22 @@ elseif(strcmpi(left,'ga_elite'))
 elseif(strcmpi(left,'ga_tol_fun'))
     conf.ga_tol_fun = str2double(right);
 elseif(strcmpi(left,'ga_use_par'))
-    conf.ga_use_par = str2double(right);
+    conf.ga_use_par = str2double(right) > 0;
+elseif(strcmpi(left,'ga_rng'))
+    conf.ga_rng = uint64(str2double(right));
+elseif(strcmpi(left,'ga_multi'))
+    conf.ga_multi = str2double(right) > 0;
 elseif(strcmpi(left,'dt_stat1d'))
     conf.dt_stat1d = str2double(right);
 elseif(strcmpi(left,'dt_dirs'))
     conf.dt_dirs = str2double(right);
 elseif(strcmpi(left,'dt_scale'))
     conf.dt_scale = str2double(right) > 0;
+elseif(strcmpi(left,'dt_w'))
+    C = textscan(right,'%s','delimiter',', ','MultipleDelimsAsOne',true);
+    for ii = 1:length(C{1})
+        conf.dt_w = cat(2,conf.dt_w,str2double(strtrim(C{1}{ii})));
+    end
 elseif(strcmpi(left,'movie'))
     conf.movie = str2double(right) > 0;
 else

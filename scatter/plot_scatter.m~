@@ -1,7 +1,21 @@
 function plot_scatter(data,model)
 % Plot the DATA and MODEL scatters over each other for visual comparison.
+% USAGE:
+%       PLOT_SCATTER(DATA,MODEL)
 %
+% 
+% Function plots only several scatters on top of each other.
+% NOTE: DATA/MODEL must be matrix of size NxM, where N is the number of
+% variates, M is the number of samples (basically wide matrices ncol >
+% nrow). Several scatters can be combined into a cell array then every
+% DATA/MODEL{I} contains such a matrix.
 %
+% For every scatter/cell array I the function plots a row of
+% figures/subplot(s). In each row the corresponding variates (2D max) for
+% the given scatter I are plotted against each other for DATA and MODEL
+% such that number of columns of the figure is equal N-1 (the following
+% pairs of variates are plotted: 1-2, 2-3, 3-4,... (N-1)-N, there are N-1 such
+% pairs in total).
 %
 
 
@@ -45,16 +59,21 @@ h = figure;
 set(h,'Position',[0 0 1000 350]);
 %
 for ii = 1:N
-    subplot(1,N,ii);
-    if(size(data{ii},1) > 1)
-        plot(data{ii}(1,:),data{ii}(2,:),'ob','MarkerSize',8,'LineWidth',2);
-        hold on;
-        plot(model{ii}(1,:),model{ii}(2,:),'or','MarkerSize',8,'LineWidth',2);
-        hold off
-        legend('DATA','MODEL');
-        xlabel(['Dataset ' num2str(ii) ', var 1']);
-        ylabel(['Dataset ' num2str(ii) ', var 2']);
-    elseif(size(data{ii},1) == 1)
+    n = size(data{ii},1);
+    if(n > 1)
+        M = n-1;
+        for jj = 1:M
+            subplot(N,M,(ii-1)*M+jj)
+            plot(data{ii}(jj,:),data{ii}(jj+1,:),'ob','MarkerSize',8,'LineWidth',2);
+            hold on;
+            plot(model{ii}(jj,:),model{ii}(jj+1,:),'or','MarkerSize',8,'LineWidth',2);
+            hold off
+            legend('DATA','MODEL');
+            xlabel(['Dataset ' num2str(ii) ', var ' num2str(jj)]);
+            ylabel(['Dataset ' num2str(ii) ', var ' num2str(jj+1)]);
+        end
+    elseif(n == 1)
+        subplot(N,M
         low = min(min(data{ii}),min(model{ii}));
         high = max(max(data{ii}),max(model{ii}));
         step = (high-low)/10;

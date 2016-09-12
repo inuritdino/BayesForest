@@ -150,7 +150,7 @@ problem.options = opts;
 
 %% REPORT RESULTS
 disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');
-if(solver == 1)
+if(solver == 1 || solver == 4)
     fprintf('%% The problem type was: %s\n', Output.problemtype);
     fprintf('%% The best point found: %g\n',xVal);
     fprintf('%% The fitness at the best point: %g\n',FVal);
@@ -216,13 +216,18 @@ if(solver == 2)%Gradient-based methods
 else
     smooth = 0;
 end
-[z,~,n] = optim_avg_distance(model_data,data,'w',w,'dirs',ndirs,'stat',stat1d,...
-    'scaling',scaling,'smooth',smooth);
-if(~isempty(n))
-    fun = @(x,y)sqrt(x.*y./(x+y));
-    disp(['Parameters: ' num2str(X) ':']);
-    disp(['    Prefactors = ' num2str(bsxfun(fun,n(1,:),n(2,:)))]);
+if (solver == 4)
+    [z,~,n] = optim_avg_distance(model_data,data,'w',w,'dirs',ndirs,'stat',stat1d,...
+        'scaling',scaling,'smooth',smooth,'multiobj');
+else
+    [z,~,n] = optim_avg_distance(model_data,data,'w',w,'dirs',ndirs,'stat',stat1d,...
+        'scaling',scaling,'smooth',smooth);
 end
+% if(~isempty(n))
+%     fun = @(x,y)sqrt(x.*y./(x+y));
+%     disp(['Parameters: ' num2str(X) ':']);
+%     disp(['Prefactors = ' num2str(bsxfun(fun,n(1,:),n(2,:)))]);
+% end
 end
 
 %% Optimization routine call
@@ -299,7 +304,7 @@ function opts = set_opts(solver,varargin)
 % information as the input (see for example 'PlotFcns' option).
 
 if(isempty(varargin))
-    if(solver == 1)
+    if(solver == 1 || solver == 4)
         opts = gaoptimset(@ga);
     elseif(solver == 2)
         opts = optimset('fminunc');
@@ -310,7 +315,7 @@ if(isempty(varargin))
     end
 else
     opts = struct;
-    if(solver == 1)
+    if(solver == 1 || solver == 4)
         opts = gaoptimset(opts,varargin{:});
     else
         opts = optimset(opts,varargin{:});

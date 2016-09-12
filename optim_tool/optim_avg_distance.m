@@ -1,7 +1,37 @@
 function [Davg, Ds, n, D_all] = optim_avg_distance(set1,set2,varargin)
-% Calculate average distance (dt_distance) for multiple data sets.
+% Calculate average (distribution tomography) distance (dt_distance) for 
+% any number of pairs of sub-data sets within two sets SET1 and SET2.
 % USAGE:
-%       Davg = OPTIM_AVG_DISTANCE(SET1,SET2)
+%       [Davg,Ds,n,Dall] = OPTIM_AVG_DISTANCE(SET1,SET2,...)
+%
+% SET1/SET2: if number of data sets > 1, the cell array of these data sets,
+% otherwise, can be a matrix
+% Number of sub-sets in SET1 and SET2 must be the same. The dt_distance()
+% compares pairs of sub-sets giving a distance value for each pair.
+%
+% Davg: average distance between many sub-set pairs
+% Ds: array of individual distances between each sub-set
+% n: 2xN matrix with number of samples in each sub-set of N sub-sets in
+%   SET1/SET2
+% Dall: all NxNdir matrix with all individual 1D metrics obtained in
+%   dt_distance by its characteristic transformation (see dt_distance).
+%   Ndir is the number of directions to perform the distribution
+%   tomography.
+% VARARGIN:
+%   'w': next element determines the weghts for the sub-sets, the weighted
+%       average is then computed.
+%   'dirs': next element is number of directions for the distribution
+%       tomography (dt_distance).
+%   'stat': 1D statistic to measure, a numerical value (see dt_distance for
+%       values).
+%   'smooth': next element is boolean, whether to perform smoothing on the
+%       1D cumulative distribution.
+%   'scaling': next element determines whether to do scaling of the
+%       distance by the number of samples.
+%   'subsets': the array of indices between 1 and N indicating which
+%       sub-sets to choose for the analysis.
+%   'max': calculate maximum of the 1D statistics instead of the default
+%       average.
 %
 % See also dt_distance
 
@@ -15,6 +45,7 @@ smooth = 0;
 scaling = 0;
 subsets = [];
 max_dist = false;
+multiobj = false;
 
 %% Process the input
 tf = strcmp('w',varargin);
@@ -44,6 +75,10 @@ end
 tf = strcmp('max',varargin);
 if(find(tf))
     max_dist = true;
+end
+tf = strcmp('multiobj',varargin);
+if(find(tf))
+    multiobj = true;
 end
 
 %% Make cell arrays from data sets
@@ -161,4 +196,9 @@ for ii = 1:N
     end
 end
 
+if(multiobj)% A trick to make the multiobjective outcome being the each U-distance
+    Dswap = Davg;
+    Davg = Ds;
+    Ds = Dswap;
+end
 end

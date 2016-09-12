@@ -59,7 +59,11 @@ mx = max(best);
 % else
 %     mx = max(best);
 % end
-dy = mx - mn;
+if(mx ~= mn)
+    dy = mx - mn;
+else
+    dy = 0.1;
+end
 % if(ncols ~= 4)
 %     ylabel('Best score');
 % else

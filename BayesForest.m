@@ -2,9 +2,18 @@ function BayesForest(input_file)
 % Optimize Stochastic Structure Model (SSM) to the Quantitative Structure
 % Model (QSM). The former is a simulated model, the latter is (usually) the
 % model of a real tree (data).
+% USAGE:
+%       BayesForest(input_file);
+%
 
 %% Read the configuration file
 config = bf_process_input(input_file);
+rnd_arr = char(['A':'Z' 'a':'z' '0':'9']);
+tmp_input_file = rnd_arr(randi(length(rnd_arr),1,4));
+tmp_input_file = ['do_not_change_input_' tmp_input_file '.temporary'];
+copyfile(input_file,tmp_input_file);%temporary file for correct
+[~,basename,ext] = fileparts(input_file);
+input_file_name = [basename ext];
 
 %% Some preparations
 currDir = pwd;% remember current directory to return at the end
@@ -66,18 +75,34 @@ TOLFUN = config.ga_tol_fun;
 USEPAR = config.ga_use_par;
 VECT = 'off';
 OUTFUN = config.ga_out_fun;
+
+if(~isempty(config.ga_rng))
+    disp(['Fixing RNG seed to ' num2str(config.ga_rng)]);
+    rng(config.ga_rng);
+end
 %% Technical parameters for the Distance
 STAT1D = config.dt_stat1d;
 DIRS = config.dt_dirs;
 SCALE = config.dt_scale;
+WGHT = config.dt_w;
 %% Optimize
-[X,F,Output, Problem, X0] = optim_call(qsm_scatter,ssm_fun,'nvars',DIM,...
-    'opts',{'PlotFcns',{@gaplotbestf,@gaplotdistance},'PopulationSize',POPSIZE,...
-    'EliteCount',ELITE,'Generations',GENS,'StallGenLimit',STALL,...
-    'PopInitRange',InitRange,'UseParallel',USEPAR,'Vectorized',VECT,...
-    'OutputFcns',OUTFUN,'TolFun',TOLFUN},...
-    'lb',LB,'ub',UB,'intcon',INTCON,'stat',STAT1D,'dirs',DIRS,'scale',SCALE);
-
+if( config.ga_multi )
+    [X,F,Output, Problem, X0] = optim_call(qsm_scatter,ssm_fun,'nvars',DIM,'gamultiobj',...
+        'opts',{'PlotFcns',{@gaplotpareto,@gaplotparetodistance},'PopulationSize',POPSIZE,...
+        'EliteCount',ELITE,'Generations',GENS,'StallGenLimit',STALL,...
+        'PopInitRange',InitRange,'UseParallel',USEPAR,'Vectorized',VECT,...
+        'TolFun',TOLFUN},...
+        'lb',LB,'ub',UB,'intcon',INTCON,'stat',STAT1D,'dirs',DIRS,'scale',SCALE,...
+        'w',WGHT);
+else
+    [X,F,Output, Problem, X0] = optim_call(qsm_scatter,ssm_fun,'nvars',DIM,...
+        'opts',{'PlotFcns',{@gaplotbestf,@gaplotdistance},'PopulationSize',POPSIZE,...
+        'EliteCount',ELITE,'Generations',GENS,'StallGenLimit',STALL,...
+        'PopInitRange',InitRange,'UseParallel',USEPAR,'Vectorized',VECT,...
+        'OutputFcns',OUTFUN,'TolFun',TOLFUN},...
+        'lb',LB,'ub',UB,'intcon',INTCON,'stat',STAT1D,'dirs',DIRS,'scale',SCALE,...
+        'w',WGHT);
+end
 %% Run the best solution
 % if(isempty(config.ssm_fun_best))
 %     ssm_best_scatter = ssm_fun(X);
@@ -93,63 +118,72 @@ mkdir(out_name);
 %%% Make the final movie
 if(config.movie)
     mov = optim_plot_generations(config.ga_out_dat,ssm_fun_best,qsm_tree);
-    copyfile(config.ga_out_dat,out_name);% copy gaOut.dat file to the result folder
-    cd(out_name);% from now on we are in the final results directory
+    %cd(out_name);% from now on we are in the final results directory
     obj = VideoWriter('gaMov.avi');
     obj.FrameRate = 0.5;% 2 sec between frames, nice looking
     open(obj);
     writeVideo(obj,mov);
     close(obj);
+    movefile('gaMov.avi',out_name);
 else
     %%%
     qsm_tree = qsm_tree.move_tree([0 0 0]);
     [xmin0,xmax0,ymin0,ymax0,zmax0] = span(qsm_tree);
-    ssm_fun_best(X);
+    ssm_scatter = ssm_fun_best(X);
     ssm_tree = read_mtg('out.mtg');% must be encoded in config
     ssm_tree = ssm_tree.move_tree([0 0 0]);
     [xmin1,xmax1,ymin1,ymax1,zmax1] = span(ssm_tree);
     %%%
     figure('position',[100 100 1000 500]);
-    subplot(221);
+    % XZ-view
+    subplot(211);
     qsm_tree.draw;
     view(0,0);% SIDE view of the data
     xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
     zlim([0 max(zmax0,zmax1)]);
-    subplot(222);
+    subplot(212);
     ssm_tree.draw;
     view(0,0);% SIDE view of the model
     xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
     zlim([0 max(zmax0,zmax1)]);
-    subplot(223);
-    qsm_tree.draw;
+    saveas(gcf,'trees-xz.png');
+    % XY-view
+    subplot(211);
     view(0,90);% TOP view of the data
     xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
     ylim([min(ymin0,ymin1) max(ymax0,ymax1)]);
-    subplot(224);
-    ssm_tree.draw;
+    subplot(212);
     view(0,90);% TOP view of the model
     xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
     ylim([min(ymin0,ymin1) max(ymax0,ymax1)]);
+    saveas(gcf,'trees-xy.png');
+    % Scatter plot
+    plot_scatter(qsm_scatter,ssm_scatter);
+    saveas(gcf,'scatters.png');
     %%%
-    copyfile(config.ga_out_dat,out_name);% copy gaOut.dat file to the result folder
-    cd(out_name);% we are in the final results folder
-    saveas(gcf,'trees.tif');
+    movefile('trees-xz.png',out_name);
+    movefile('trees-xy.png',out_name);
+    movefile('scatters.png',out_name);
+    %cd(out_name);% we are in the final results folder
 end
 %% Finalize
+% Moving gaOut.dat
+movefile(config.ga_out_dat,out_name);
 % Save the results
 save('bf_out.mat','X','ssm_fun','ssm_fun_best','Problem','Output');
-% Copy the input configuration file
-copyfile([currDir '/' input_file]);% copy the input configuration to the results folder
+movefile('bf_out.mat',out_name);
+% Move the input configuration file renaming it to the original name
+movefile(tmp_input_file,[out_name '/' input_file_name]);
 % Save genetic algorithm figure
 hall = findall(0,'type','figure');
 saveas(hall(strcmp({hall(:).Name},'Genetic Algorithm')),'ga');
-fprintf('The output directory:\n%s\n',pwd);% report the results folder
-cd(currDir);% move back to the original directory.
+movefile('ga.fig',out_name);
+fprintf('The output directory:\n%s\n',[currDir '/' out_name]);% report the results folder
 end
 
 function [xmin,xmax,ymin,ymax,zmax] = span(tr)
 % Find the span in directions
-ADDUP = 0.5;
+ADDUP = 0.2;
 if(min(tr.end_point(:,1)) < min(tr.start_point(:,1)))
     [~,xmin] = min(tr.end_point(:,1));
     xmin = tr.end_point(xmin,1) - ADDUP;

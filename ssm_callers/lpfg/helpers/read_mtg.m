@@ -89,7 +89,9 @@ end
 tr.number_of_branches = ncyl;
 %disp(['I''ve read ' num2str(N) ' lines and ' num2str(ncyl) ' cylinders.']);
 % Get branch information
-br = get_branches(tr);
+if(nargout == 3)
+    br = get_branches(tr);
+end
 
 disp('Done');
 fclose(fid);

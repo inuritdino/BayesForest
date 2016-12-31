@@ -142,7 +142,13 @@ else
     xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
     zlim([0 max(zmax0,zmax1)]);
     subplot(212);
-    ssm_tree.draw;
+    new_ssm_tree = ssm_tree;
+    max_o = 4;
+    while( new_ssm_tree.number_of_branches > 100000 )
+        max_o = max_o - 1;
+        new_ssm_tree = branches_by_order(new_ssm_tree,max_o);
+    end
+    new_ssm_tree.draw;title(['w <= ' num2str(max_o)]);
     view(0,0);% SIDE view of the model
     xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
     zlim([0 max(zmax0,zmax1)]);

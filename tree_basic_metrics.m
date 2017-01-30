@@ -48,9 +48,8 @@ dists = sqrt((tree.end_point(:,1)-center(1)).^2 + (tree.end_point(:,2)-center(2)
 for jj = 2:m
     ii = find(angles < deg(jj) & angles > deg(jj-1));
     if(isempty(ii)), continue; end
-    [~,idx] = max(dists(ii));
     %pnts(jj-1,:) = [tree.end_point(ii(idx),1) tree.end_point(ii(idx),2)];
-    spokes(jj-1) = dists(ii(idx));
+    spokes(jj-1) = max(dists(ii));
 end
 %pnts = pnts(pnts(:,1) ~= 0,:);% remove not found angular slices
 spokes = spokes(spokes ~= 0);

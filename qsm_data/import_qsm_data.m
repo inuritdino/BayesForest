@@ -3,18 +3,33 @@ function tr = import_qsm_data(branch_data_table,cyl_data_table,out_fn)
 % USE:
 %     TREE = IMPORT_QSM_DATA(BRANCH_DATA_TABLE,CYL_DATA_TABLE,OUT_FN)
 %
-%
 % INPUT:
 %
 % BRANCH_DATA_FN - branches table-data file name or data matrix
 % CYL_DATA_FN - cylinder table-data file name or data matrix
 % OUT_FN - (optional) output .mat file name (default is 'tree_out.mat')
+% 
+% The following format for the tables is dictate by the QSM algorithm
+% generating the tables for purposes other than use in BayesForest Toolbox.
+% This format, hence, can be changed in the future to accomodate the Toolbox
+% needs specifically.
 %
+% BRANCH TABLE(num branches x at least 5):
+% Br Order | Br Parent | Br Volume (not needed) | Br Length | Br Angle |
+%   ...    |   ...     |         ...            |   ...     |    ...   |
+%
+% CYLINDER/SEGMENT TABLE(num cylinders x at least 11):
+% Seg Radius | Seg Len | Seg Start (X,Y,Z) | Seg Axis (X,Y,Z) | Seg Parent | Seg Extension | Seg Branch |
+%   ...      |  ...    |  ... | ... | ...  |  ... | ... | ... |  ...       |      ...      |     ...    |
 %
 % OUTPUT:
 %
 % TREE - the tree object tree, which can be, for example, drawn with
 % tree.draw command.
+% 
+% Additionally, this function generates the output .mat file with the information
+% read from the tables (OUT_FN, default 'qsm_out.mat').
+
 
 if(nargin < 3)
     out_fn = 'qsm_out.mat';

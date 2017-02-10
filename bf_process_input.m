@@ -17,13 +17,17 @@ function conf = bf_process_input(input_file)
 % qsm_mat_file = the .mat file for the QSM features. The format understandable by
 %		gen_scatter2() function (see qsm_data/ folder). Default: empty.
 % qsm_cyl_table = a variable name containing the matrix with segment-related 
-%		features. Dimension: number of segments x 4. Note the variable
-% 		must exist in the workspace. Default: []. The value may be the
-% 		name of a file containing such matrix.
+%		features. Dimension: number of segments x 11. Note the variable
+% 		must exist in the workspace. The value may be the name of a file 
+% 		containing data for such matrix (`importdata` is used). 
+%		Default: []. For the format of the matrix see `help import_qsm_data`
+%		at the Matlab prompt.
 % qsm_br_table = a variable name containing the matrix with branch-related
 %		features. Dimension: number of branches x 5. Note the variable
-%		must exist in the workspace. Default: []. The value may be the
-%		name of a file containing such matrix.
+%		must exist in the workspace. The value may be the name of a file 
+%		containing data for such matrix (`importdata` is used). 
+%		Default: []. For the format of the matrix see `help import_qsm_data`
+%		at the Matlab prompt. 
 % qsm_merge = whether to use merging of scatters for the QSM data. Note: SSM
 %		scatters must be also produced with the same merging. Default: false.
 % segment = list of topological orders to be used with segment-related tables.
@@ -67,6 +71,9 @@ function conf = bf_process_input(input_file)
 %		Default: [].
 % movie = whether to create a move of evolving structure over optimization runs.
 %		Default: true.
+% plot = whether to plot the tree structures and, perhaps, to make movie (controlled
+%		by 'movie' option). Default: true. Note that scatter plots are created
+%		anyways.
 % ga_out_fun = a function to run after each GA iteration. Could be a printing
 % 		of a progress or similar.
 % ga_tol_fun = distance tolerance threshold determines which changes in distance
@@ -86,7 +93,7 @@ conf = struct('target_dir','.','scatter','segment','order',1,'qsm_mat_file',[],.
     'dt_stat1d',1,'dt_dirs',100,'dt_scale',false,'dt_w',[],...
     'ssm_tree_fun','@()read_mtg(''out.mtg'')','ga_out_dat','gaOut.dat',...
     'ga_use_par',0,'ga_rng',[],'ssm_fun_best',[],'movie',true,'qsm_merge',false,'ga_out_fun',[],...
-    'ga_tol_fun',1e-6,'ga_multi',0);
+    'ga_tol_fun',1e-6,'ga_multi',0,'plot',true);
 
 fprintf('Start processing ''%s''...',input_file);
 
@@ -219,6 +226,8 @@ elseif(strcmpi(left,'dt_w'))
     end
 elseif(strcmpi(left,'movie'))
     conf.movie = str2double(right) > 0;
+elseif(strcmpi(left,'plot'))
+    conf.plot = str2double(right) > 0;
 else
     fprintf('Unknown line: %s = %s\n',left,right);
 end

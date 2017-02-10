@@ -5,6 +5,7 @@ function BayesForest(input_file)
 % USAGE:
 %       BayesForest(input_file);
 %
+% SEE ALSO: bf_process_input, import_qsm_data, gen_scatter2
 
 %% Read the configuration file
 config = bf_process_input(input_file);
@@ -34,7 +35,13 @@ end
 if(~isempty(config.qsm_mat_file))
     [qsm_bra,qsm_seg,qsm_tree] = gen_scatter2(config.qsm_mat_file);
 elseif(~isempty(config.qsm_cyl_table) && ~isempty(config.qsm_br_table))
-    import_qsm_data(evalin('base',config.qsm_br_table),evalin('base',config.qsm_cyl_table),'temp.mat');
+    if(exist(config.qsm_cyl_table) == 2 && exist(config.qsm_br_table) == 2)
+	    fprintf('Reading QSM data from the data files...\n');
+	    import_qsm_data(config.qsm_br_table,config.qsm_cyl_table,'temp.mat');
+    else
+	    fprintf('Getting QSM data from the workspace...\n');
+    	    import_qsm_data(evalin('base',config.qsm_br_table),evalin('base',config.qsm_cyl_table),'temp.mat');
+    end
     [qsm_bra,qsm_seg,qsm_tree] = gen_scatter2('temp.mat');
     delete('temp.mat');
 else
@@ -59,7 +66,11 @@ else
 end
 %% Define the trial model
 ssm_fun = str2func(config.ssm_fun);
-ssm_fun_best = str2func(config.ssm_fun_best);
+if(~isempty(config.ssm_fun_best))
+	ssm_fun_best = str2func(config.ssm_fun_best);
+else
+	ssm_fun_best = ssm_fun;
+end
 %% Technical parameters for the GA
 InitRange = [config.ga_init_lb; config.ga_init_ub];
 LB = config.ga_lb;
@@ -115,62 +126,69 @@ out_name = [num2str(t(3)) '.' num2str(t(2)) '.' num2str(t(1)) '_' ...
     num2str(t(4)) '.' num2str(t(5))];
 mkdir(out_name);
 %% Plot the trees
-%%% Make the final movie
-if(config.movie)
-    mov = optim_plot_generations(config.ga_out_dat,ssm_fun_best,qsm_tree);
-    %cd(out_name);% from now on we are in the final results directory
-    obj = VideoWriter('gaMov.avi');
-    obj.FrameRate = 0.5;% 2 sec between frames, nice looking
-    open(obj);
-    writeVideo(obj,mov);
-    close(obj);
-    movefile('gaMov.avi',out_name);
-else
-    %%%
-    qsm_tree = qsm_tree.move_tree([0 0 0]);
-    [xmin0,xmax0,ymin0,ymax0,zmax0] = span(qsm_tree);
-    ssm_scatter = ssm_fun_best(X);
-    ssm_tree = read_mtg('out.mtg');% must be encoded in config
-    ssm_tree = ssm_tree.move_tree([0 0 0]);
-    [xmin1,xmax1,ymin1,ymax1,zmax1] = span(ssm_tree);
-    %%%
-    figure('position',[100 100 1000 500]);
-    % XZ-view
-    subplot(211);
-    qsm_tree.draw;
-    view(0,0);% SIDE view of the data
-    xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
-    zlim([0 max(zmax0,zmax1)]);
-    subplot(212);
-    new_ssm_tree = ssm_tree;
-    max_o = 4;
-    while( new_ssm_tree.number_of_branches > 100000 )
-        max_o = max_o - 1;
-        new_ssm_tree = branches_by_order(new_ssm_tree,max_o);
+if(config.plot)
+    %%% Make the final movie
+    if(config.movie)
+        mov = optim_plot_generations(config.ga_out_dat,ssm_fun_best,qsm_tree);
+        %cd(out_name);% from now on we are in the final results directory
+        obj = VideoWriter('gaMov.avi');
+        obj.FrameRate = 0.5;% 2 sec between frames, nice looking
+        open(obj);
+        writeVideo(obj,mov);
+        close(obj);
+        movefile('gaMov.avi',out_name);
+    else
+        %%%
+        qsm_tree = qsm_tree.move_tree([0 0 0]);
+        [xmin0,xmax0,ymin0,ymax0,zmax0] = span(qsm_tree);
+        ssm_scatter = ssm_fun_best(X);
+        ssm_tree = read_mtg('out.mtg');% must be encoded in config
+        ssm_tree = ssm_tree.move_tree([0 0 0]);
+        [xmin1,xmax1,ymin1,ymax1,zmax1] = span(ssm_tree);
+        %%%
+        figure('position',[100 100 1000 500]);
+        % XZ-view
+        subplot(211);
+        qsm_tree.draw;
+        view(0,0);% SIDE view of the data
+        xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
+        zlim([0 max(zmax0,zmax1)]);
+        subplot(212);
+        new_ssm_tree = ssm_tree;
+        max_o = 4;
+        while( new_ssm_tree.number_of_branches > 100000 )
+            max_o = max_o - 1;
+            new_ssm_tree = branches_by_order(new_ssm_tree,max_o);
+        end
+        new_ssm_tree.draw;title(['w <= ' num2str(max_o)]);
+        view(0,0);% SIDE view of the model
+        xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
+        zlim([0 max(zmax0,zmax1)]);
+        saveas(gcf,'trees-xz.png');
+        % XY-view
+        subplot(211);
+        view(0,90);% TOP view of the data
+        xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
+        ylim([min(ymin0,ymin1) max(ymax0,ymax1)]);
+        subplot(212);
+        view(0,90);% TOP view of the model
+        xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
+        ylim([min(ymin0,ymin1) max(ymax0,ymax1)]);
+        saveas(gcf,'trees-xy.png');
+        % Scatter plot
+        plot_scatter(qsm_scatter,ssm_scatter);
+        saveas(gcf,'scatters.png');
+        %%%
+        movefile('trees-xz.png',out_name);
+        movefile('trees-xy.png',out_name);
+        movefile('scatters.png',out_name);
+        %cd(out_name);% we are in the final results folder
     end
-    new_ssm_tree.draw;title(['w <= ' num2str(max_o)]);
-    view(0,0);% SIDE view of the model
-    xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
-    zlim([0 max(zmax0,zmax1)]);
-    saveas(gcf,'trees-xz.png');
-    % XY-view
-    subplot(211);
-    view(0,90);% TOP view of the data
-    xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
-    ylim([min(ymin0,ymin1) max(ymax0,ymax1)]);
-    subplot(212);
-    view(0,90);% TOP view of the model
-    xlim([min(xmin0,xmin1) max(xmax0,xmax1)]);
-    ylim([min(ymin0,ymin1) max(ymax0,ymax1)]);
-    saveas(gcf,'trees-xy.png');
-    % Scatter plot
+else% No plot for trees, but scatters
+    ssm_scatter = ssm_fun_best(X);
     plot_scatter(qsm_scatter,ssm_scatter);
     saveas(gcf,'scatters.png');
-    %%%
-    movefile('trees-xz.png',out_name);
-    movefile('trees-xy.png',out_name);
     movefile('scatters.png',out_name);
-    %cd(out_name);% we are in the final results folder
 end
 %% Finalize
 % Moving gaOut.dat

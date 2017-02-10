@@ -3,7 +3,16 @@ function BayesForest(input_file)
 % Model (QSM). The former is a simulated model, the latter is (usually) the
 % model of a real tree (data).
 % USAGE:
-%       BayesForest(input_file);
+%       BayesForest(input_file)
+%
+% The input_file describes the configuration of the morphological data,
+% optimization configuration, SSM and additional details of the procedure.
+% Refer to the help pages of `bf_process_input`.
+%
+% BayesForest creates several figures during optimization (e.g. optimization
+% progress) and some figures after the program has finished. The output
+% folder (coded by date and time) is created with all figures and data files
+% at the end.
 %
 % SEE ALSO: bf_process_input, import_qsm_data, gen_scatter2
 

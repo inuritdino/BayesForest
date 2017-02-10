@@ -271,11 +271,11 @@ end
         newY = cross(W,newX);% rotate (around Z) Y-axis => y-axis
         % Z is not rotated, so xy=XY
         % Orthogonal check
-        if((abs(newX*newY') > 1e-05) || (abs(newX*[0 0 1]') > 1e-05)...
+        if((abs(newX*newY') > 1e-04) || (abs(newX*[0 0 1]') > 1e-04)...
                 || (abs(newY*[0 0 1]') > 1e-05))
             disp('ERROR: Basis 1 is not orthogonal');
         end
-        if(sum(newX.^2) > (1.0+1e-05) || sum(newY.^2) > (1.0+1e-05))
+        if(sum(newX.^2) > (1.0+1e-04) || sum(newY.^2) > (1.0+1e-04))
             disp('ERROR: Basis 1 length is wrong');
         end
         targetAxe = Axe(next,:);
@@ -291,12 +291,12 @@ end
         newZ = cross(newX,newY);% rotate (around y) Z-axis => z-axis
         % y is not rotated, although not original Y (newY modified above)
         % Orthogonal check
-        if((abs(newX*newY') > 1e-05) || (abs(newX*newZ') > 1e-05)...
-                || (abs(newY*newZ') > 1e-05))
+        if((abs(newX*newY') > 1e-04) || (abs(newX*newZ') > 1e-04)...
+                || (abs(newY*newZ') > 1e-04))
             disp('ERROR: Basis 2 is not orthogonal');
         end
-        if(sum(newX.^2) > (1.0+1e-05) || sum(newY.^2) > (1.0+1e-05) ...
-                || sum(newZ.^2) > (1.0+1e-05))
+        if(sum(newX.^2) > (1.0+1e-04) || sum(newY.^2) > (1.0+1e-04) ...
+                || sum(newZ.^2) > (1.0+1e-04))
             disp('ERROR: Basis 2 length is wrong');
         end
         targetAxe = Axe(next,:);

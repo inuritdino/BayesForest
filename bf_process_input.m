@@ -42,19 +42,22 @@ function conf = bf_process_input(input_file)
 % 		@(x)ssm_lpfg2(x,...) See LPFG callers from ssm_callers/.
 % ssm_fun_best = same as 'ssm_fun', but called upon the final best-fit SSM 
 %		simulation. This could be useful when generating output MTG file
-%		(time consuming) for visualizations outside of Matlab.
+%		(time consuming) for visualizations outside of Matlab. Default: same
+%		as 'ssm_fun'.
 % ga_init_lb = lower boundaries of the parameters for the optimization search at
 %		the first run. >= the global lower boundary and usually contains
 %		the best solution. Corresponds to the lower value of 'PopInitRange'
-%		in Genetic Algorithm(GA) of Matlab Optimization Toolbox.
-% ga_init_ub = 'PopInitRange' upper boundary; <= the global upper boundary.
-% ga_lb = global lower boundary, corresponds to 'lb' in GA.
-% ga_ub = global upper boudnary.
-% ga_int_con = indices of the integer variables of the SSM.
-% ga_pop_size = Population size for GA.
-% ga_gens = number of generations in GA.
-% ga_stall = stall limit in GA.
-% ga_elite = GA Elite size.
+%		in Genetic Algorithm(GA) of Matlab Optimization Toolbox. Default: []
+%		(calculated automatically in GA call).
+% ga_init_ub = 'PopInitRange' upper boundary; <= the global upper boundary. Default: []
+%		(calculated automatically in GA call).
+% ga_lb = global lower boundary, corresponds to 'lb' in GA. Default: [] (as in GA call).
+% ga_ub = global upper boudnary. Default: [] (as in GA call).
+% ga_int_con = indices of the integer variables of the SSM. Default: [] (as in GA).
+% ga_pop_size = Population size for GA. Default: [] (as in GA).
+% ga_gens = number of generations in GA. Default: [] (as in GA).
+% ga_stall = stall limit in GA. Default: [] (as in GA).
+% ga_elite = GA Elite size. Default: [] (as in GA call).
 % dt_stat1d = number indicating which 1D statistic to use in the distance code.
 %		See dt_distance() code (stat1d input).Default: 1 (KS-test).
 % dt_dirs = number of directions to used when calculating the structural distance.
@@ -63,21 +66,22 @@ function conf = bf_process_input(input_file)
 % dt_w = vector of weights if weighted average over the several distance values
 %		is to be calculated. Default: [].
 % ssm_tree_fun = a function that generates a tree object after best-fit SSM
-%		is run (see ssm_fun_best option).
+%		is run (see ssm_fun_best option). Default: '@()read_mtg(''out.mtg'')',
+%		not used currently.
 % ga_out_dat = output file name for the GA progress report. Default: 'gaOut.dat'.
 % ga_use_par = whether to use parallel optimization. Default: false. Any non-zero
 %		value is treated as true.
 % ga_rng = random number generator seed value. To reproduce the optimization run.
-%		Default: [].
+%		Default: []. If empty, repeated runs will NOT be the same.
 % movie = whether to create a move of evolving structure over optimization runs.
 %		Default: true.
 % plot = whether to plot the tree structures and, perhaps, to make movie (controlled
 %		by 'movie' option). Default: true. Note that scatter plots are created
 %		anyways.
 % ga_out_fun = a function to run after each GA iteration. Could be a printing
-% 		of a progress or similar.
+% 		of a progress or similar. Default: [].
 % ga_tol_fun = distance tolerance threshold determines which changes in distance
-% 		are considered significant.
+% 		are considered significant. Default: 1e-06.
 % ga_multi = whether to use Multi-Objective GA (Pareto front). Default: false.
 %		Note: the Multi-Objective GA is not fully implemented yet.
 % ================================================================================

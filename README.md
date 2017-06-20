@@ -11,22 +11,30 @@ details of organization (fine-grain scale).
 
 Our approach is based upon five distinct parts:
 
-1. Quantitative Structural Model (QSM) that is to be obtained from the Terrestrial Laser Scanning (TLS) data (see [Raumonen et al., *Remote Sensing* 2013]).
+1. Quantitative Structural Model (QSM) that is to be obtained from the Terrestrial Laser Scanning (TLS) data (see Raumonen et al., *Remote Sensing* 2013; 5:491-520).
 2. Stochastic Structural Model (SSM), that is an analytical tree growth model. For example, one of Functional-Structural Plant Models (FSPM) or structural models with heuristic rules for growth (SHM or procedural models).	
 3. Structural data sets, that is data sets U relating different physical dimensions as well as spatial location of various parts and segments of a tree with optional sorting by the topological characteristics.
 4. Distance, that is a measure of proximity between any two data sets, in other words, a value quantifying how similar the two data sets are. 
 5. Optimization algorithm, that is an iterative procedure capable of finding a minimum of any given function (Newton algorithm, genetic algorithm etc.).
 
+Please, refer to the [Wiki pages](https://github.com/inuritdino/BayesForest/wiki) of this project.
+
 This approach is described in further details in the following publications:
-a. "Data-based stochastic modeling of tree growth and structure formation" by
-I. Potapov et al., Silva Fennica 50(1):1413.
+
+- I. Potapov et al., Data-based stochastic modeling of tree growth and structure
+ formation, _Silva Fennica_ **50**(1):1413.
+
+- I. Potapov et al., Bayes Forest: a data-intensive generator of morphological
+ tree clones, _GigaScience_, **in press**.
 
 ==============================
 
-The main function is BayesForest.m, which takes an input configuration file describing
+The BayesForest Toolbox is written in Matlab.
+
+The main function is `BayesForest.m`, which takes an input configuration file describing
 all the details of the whole procedure. Refer to the help documentation of a 
 particular function for further details (configuration file syntax is described
-in *bf_process_input()* function's documentation).
+in `bf_process_input()` function's documentation).
 
 
 

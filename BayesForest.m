@@ -18,15 +18,19 @@ function BayesForest(input_file)
 
 %% Read the configuration file
 config = bf_process_input(input_file);
+% Copy configuration file
 rnd_arr = char(['A':'Z' 'a':'z' '0':'9']);
 tmp_input_file = rnd_arr(randi(length(rnd_arr),1,4));
 tmp_input_file = ['do_not_change_input_' tmp_input_file '.temporary'];
-copyfile(input_file,tmp_input_file);%temporary file for correct
+copyfile(input_file,tmp_input_file);% copy to temporary file
+movefile(tmp_input_file,config.target_dir);
 [~,basename,ext] = fileparts(input_file);
 input_file_name = [basename ext];
 
 %% Some preparations
+% Enter target directory
 currDir = pwd;% remember current directory to return at the end
+disp(['Entering target directory:' pwd '/' config.target_dir])
 cd(config.target_dir);% move to the target directory
 
 %% Define the input: scatter types, order etc.
@@ -134,6 +138,7 @@ t = clock;
 out_name = [num2str(t(3)) '.' num2str(t(2)) '.' num2str(t(1)) '_' ...
     num2str(t(4)) '.' num2str(t(5))];
 mkdir(out_name);
+
 %% Plot the trees
 if(config.plot)
     %%% Make the final movie
@@ -211,7 +216,9 @@ movefile(tmp_input_file,[out_name '/' input_file_name]);
 hall = findall(0,'type','figure');
 saveas(hall(strcmp({hall(:).Name},'Genetic Algorithm')),'ga');
 movefile('ga.fig',out_name);
-fprintf('The output directory:\n%s\n',[currDir '/' out_name]);% report the results folder
+fprintf('The output directory:\n%s\n',[pwd '/' out_name]);% report the results folder
+% Return to the original directory
+cd(currDir);
 end
 
 function [xmin,xmax,ymin,ymax,zmax] = span(tr)

@@ -1,3 +1,5 @@
+**LEGACY DESCRIPTION: refer to README.md instead**
+
 Explanation of the optimization code use and some examples.
 
 The main optimization function is OPTIM_CALL(...), which takes the data to 

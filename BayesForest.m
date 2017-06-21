@@ -22,8 +22,8 @@ config = bf_process_input(input_file);
 rnd_arr = char(['A':'Z' 'a':'z' '0':'9']);
 tmp_input_file = rnd_arr(randi(length(rnd_arr),1,4));
 tmp_input_file = ['do_not_change_input_' tmp_input_file '.temporary'];
-copyfile(input_file,tmp_input_file);% copy to temporary file
-movefile(tmp_input_file,config.target_dir);
+% copyfile(input_file,tmp_input_file);% copy to temporary file
+% movefile(tmp_input_file,config.target_dir);
 [~,basename,ext] = fileparts(input_file);
 input_file_name = [basename ext];
 
@@ -32,7 +32,7 @@ input_file_name = [basename ext];
 currDir = pwd;% remember current directory to return at the end
 disp(['Entering target directory:' pwd '/' config.target_dir])
 cd(config.target_dir);% move to the target directory
-
+copyfile([currDir '/' input_file],tmp_input_file);
 %% Define the input: scatter types, order etc.
 if(isempty(config.scatter))
     scat = {'branch','segment'};

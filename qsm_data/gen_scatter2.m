@@ -9,7 +9,7 @@ function [Branch, Segment, tree_out] = gen_scatter2(input_data_file)
 % IMPORTANT: as opposed to the 1st version, here the scatters are roughly
 % divided into two groups: BRANCH and SEGMENT oriented data sets. The
 % Branch data set contains information of the whole branches like total
-% length, radis at the base, branching and azimuthal angles etc. The
+% lengths, radii at the base, branching and azimuthal angles etc. The
 % Segment data set contains information of the segments in any particular
 % branch such as tapering of the branches and curvature in space. Both data
 % sets are sorted by the order. Trunk (order 0) has only the Segment data 

@@ -91,6 +91,11 @@ if(~isempty(config.qsm_table))% arbitrary format scatter
         qsm_scatter = evalin('base',config.qsm_table);
         fprintf('Done.\n');
     end
+    if(~isempty(config.qsm_tree))
+        qsm_tree = evalin('base',config.qsm_tree);
+    else
+        fprintf('Warning: qsm_tree option was not defined for custom data.\n');
+    end
 end
 %% Define the trial model
 ssm_fun = str2func(config.ssm_fun);

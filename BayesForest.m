@@ -45,36 +45,51 @@ else
     order = config.order;
 end
 %% Load the data
-if(~isempty(config.qsm_mat_file))
-    [qsm_bra,qsm_seg,qsm_tree] = gen_scatter2(config.qsm_mat_file);
-elseif(~isempty(config.qsm_cyl_table) && ~isempty(config.qsm_br_table))
-    if(exist(config.qsm_cyl_table,'file') == 2 && exist(config.qsm_br_table,'file') == 2)
-	    fprintf('Reading QSM data from the data files...\n');
-	    import_qsm_data(config.qsm_br_table,config.qsm_cyl_table,'temp.mat');
+if(isempty(config.qsm_table))
+    if(~isempty(config.qsm_mat_file))
+        [qsm_bra,qsm_seg,qsm_tree] = gen_scatter2(config.qsm_mat_file);
+    elseif(~isempty(config.qsm_cyl_table) && ~isempty(config.qsm_br_table))
+        if(exist(config.qsm_cyl_table,'file') == 2 && exist(config.qsm_br_table,'file') == 2)
+            fprintf('Reading QSM data from the data files...\n');
+            import_qsm_data(config.qsm_br_table,config.qsm_cyl_table,'temp.mat');
+        else
+            fprintf('Getting QSM data from the workspace...\n');
+            import_qsm_data(evalin('base',config.qsm_br_table),evalin('base',config.qsm_cyl_table),'temp.mat');
+        end
+        [qsm_bra,qsm_seg,qsm_tree] = gen_scatter2('temp.mat');
+        delete('temp.mat');
     else
-	    fprintf('Getting QSM data from the workspace...\n');
-    	    import_qsm_data(evalin('base',config.qsm_br_table),evalin('base',config.qsm_cyl_table),'temp.mat');
+        delete(tmp_input_file);
+        error('Error: data (QSM) file is not specified.');
     end
-    [qsm_bra,qsm_seg,qsm_tree] = gen_scatter2('temp.mat');
-    delete('temp.mat');
-else
-    error('Error: data (QSM) file is not specified.');
+    if(isempty(config.segment) && isempty(config.branch))
+        if(config.qsm_merge)
+            qsm_scatter = arrange_scatter(qsm_bra,qsm_seg,'scat',scat,...
+                'order',order,'merge');
+        else
+            qsm_scatter = arrange_scatter(qsm_bra,qsm_seg,'scat',scat,...
+                'order',order);
+        end
+    else
+        if(config.qsm_merge)
+            qsm_scatter = arrange_scatter(qsm_bra,qsm_seg,'branch',config.branch,...
+                'segment',config.segment,'merge');
+        else
+            qsm_scatter = arrange_scatter(qsm_bra,qsm_seg,'branch',config.branch,...
+                'segment',config.segment);
+        end
+    end
 end
-if(isempty(config.segment) && isempty(config.branch))
-    if(config.qsm_merge)
-        qsm_scatter = arrange_scatter(qsm_bra,qsm_seg,'scat',scat,...
-            'order',order,'merge');
+%% Arbitrary data sets
+if(~isempty(config.qsm_table))% arbitrary format scatter
+    if(exist(config.qsm_table,'file') == 2)
+        fprintf('Reading user data from file...');
+        qsm_scatter = importdata(config.qsm_table);
+        fprintf('Done.\n');
     else
-        qsm_scatter = arrange_scatter(qsm_bra,qsm_seg,'scat',scat,...
-            'order',order);
-    end
-else
-    if(config.qsm_merge)
-        qsm_scatter = arrange_scatter(qsm_bra,qsm_seg,'branch',config.branch,...
-            'segment',config.segment,'merge');
-    else
-        qsm_scatter = arrange_scatter(qsm_bra,qsm_seg,'branch',config.branch,...
-            'segment',config.segment);
+        fprintf('Reading user data from workspace...');
+        qsm_scatter = evalin('base',config.qsm_table);
+        fprintf('Done.\n');
     end
 end
 %% Define the trial model

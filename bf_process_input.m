@@ -30,6 +30,10 @@ function conf = bf_process_input(input_file)
 %		at the Matlab prompt. 
 % qsm_merge = whether to use merging of scatters for the QSM data. Note: SSM
 %		scatters must be also produced with the same merging. Default: false.
+% qsm_table = an arbitrary user-defined data set. Can be either a variable
+%       in the workspace or a file name containing the data set (importdata
+%       is used in the latter case). It is user responsibility to provide a
+%       SSM function compliant with the data set. Default: [].
 % segment = list of topological orders to be used with segment-related tables.
 %		The option is useful when different orders for segment- and 
 % 		branch-related features are to be used. Do not use along with 'scatter' 
@@ -91,7 +95,7 @@ function conf = bf_process_input(input_file)
 % See also: ga
 
 conf = struct('target_dir','.','scatter','segment','order',1,'qsm_mat_file',[],...
-    'qsm_cyl_table',[],'qsm_br_table',[],'segment',[],'branch',[],...
+    'qsm_cyl_table',[],'qsm_br_table',[],'qsm_table',[],'segment',[],'branch',[],...
     'ssm_fun',[],'ga_init_lb',[],'ga_init_ub',[],'ga_lb',[],'ga_ub',[],'ga_int_con',[],...
     'ga_pop_size',[],'ga_gens',[],'ga_stall',[],'ga_elite',[],...
     'dt_stat1d',1,'dt_dirs',100,'dt_scale',false,'dt_w',[],...
@@ -153,6 +157,8 @@ elseif(strcmpi(left,'qsm_cyl_table'))
     conf.qsm_cyl_table = right;
 elseif(strcmpi(left,'qsm_br_table'))
     conf.qsm_br_table = right;
+elseif(strcmpi(left,'qsm_table'))
+    conf.qsm_table = right;
 elseif(strcmpi(left,'qsm_merge'))
     conf.qsm_merge = str2double(right) > 0;
 elseif(strcmpi(left,'segment'))

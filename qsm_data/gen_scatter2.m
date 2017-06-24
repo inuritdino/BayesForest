@@ -5,7 +5,9 @@ function [Branch, Segment, tree_out] = gen_scatter2(input_data_file)
 % the subsequent analysis in the Bayes Forest tree generation as the source
 % for the distributions. The prior knowledge of the certain characteristics
 % (INPUT DATA) is needed. The characteristics come from the analysis of the
-% measurements/simulations.
+% measurements/simulations. The characteristics are the basic geometrical and 
+% topological relations between branches and segments constituting them.
+%
 % IMPORTANT: as opposed to the 1st version, here the scatters are roughly
 % divided into two groups: BRANCH and SEGMENT oriented data sets. The
 % Branch data set contains information of the whole branches like total
@@ -40,7 +42,36 @@ function [Branch, Segment, tree_out] = gen_scatter2(input_data_file)
 % BAng      Angle between branch and its parent branch, (n_branch x 1)-vector
 % FCB       Index of the first cylinder in the branch (not the "Added"
 %               cylinder), (n_branch x 1)-vector
-% ------------------------------
+% ------------ OUTPUT DATA ------------------
+% Branch -- branch-related data: a struct with two fields: 'info' and 'data'. 'info' has a codename for
+% 	the data set variables (columns). 'data' is a cell array with the data sets sorted by
+%	the topological order w, so that Branch.data{w} is a data set for order w. Length of
+%	'info' array equals to number of columns in a Branch.data{i}.
+%	Features supported:
+%	 	info codename, 		description
+% 		bra			branching angle, deg
+%		az			azimuthal angle, deg
+%		ltot			total length of a branch, m
+%		rini			radius of the first segment of a branch, m
+%		lapar			distance from the beginning of the parent branch to 
+%					the point where the current branch emanates, m
+%
+% Segment -- same as Branch, but for segment-related data.
+% 	Features supported:
+%		info codename, 		description
+%		rad			radius of a segment, m
+%		len			length, m
+%		gamma			angle between the current segment and its parent in 
+%					horizontal projection, deg
+%		zeta			angle between the current segment and its parent in 
+%					vertical projection, deg
+%
+% tree_out -- a tree class object that can visually represent a tree.
+%
+% NOTE: The above feature list for both Branch and Segment can be augmented when needed with 
+% a binding for documentation and codification.
+%
+% SEE ALSO: import_qsm_data, tree
 
 
 %% ----- LOAD INPUT -----

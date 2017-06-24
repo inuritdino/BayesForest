@@ -1,9 +1,10 @@
 function [D_sum, D_max, D_all] = dt_distance(samples_model, samples_exp, ...
     directions, stat1d, smoothing, scaling) 
-% Wrapper for computing the "distance" between two datasets of the 
-% lignum/lignum2 model 
-% - MJ
-
+% Wrapper for computing the "distance" between two (structural) datasets.
+% The distance is calculated using the notion of distribution tomography.
+% See elsewhere. 
+% Author: Marko J?rvenp??.
+%
 % INPUT:
 % samples_model, size dim*n, samples from the model, each column == one
 % datapoint
@@ -33,6 +34,7 @@ function [D_sum, D_max, D_all] = dt_distance(samples_model, samples_exp, ...
 % OUTPUT:
 % D_sum, average of 1d statistics computed to different directions (when stat1d > 0)
 % D_max, max value of 1d statistics computed to different directions (when stat1d > 0)
+% D_all, all the distances from all directions
 %
 % NOTE:
 % Recommended settings: 

@@ -22,10 +22,10 @@ Please, refer to the [Wiki pages](https://github.com/inuritdino/BayesForest/wiki
 This approach is described in further details in the following publications:
 
 - I. Potapov et al., Data-based stochastic modeling of tree growth and structure
- formation, _Silva Fennica_ **50**(1):1413.
+ formation, _Silva Fennica_ **50**(1):1413, 2016.
 
 - I. Potapov et al., Bayes Forest: a data-intensive generator of morphological
- tree clones, _GigaScience_, **6**(10):1--13, 2017.
+ tree clones, _GigaScience_, **6**(10):1-13, 2017.
 
 ==============================
 

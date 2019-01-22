@@ -25,7 +25,7 @@ This approach is described in further details in the following publications:
  formation, _Silva Fennica_ **50**(1):1413.
 
 - I. Potapov et al., Bayes Forest: a data-intensive generator of morphological
- tree clones, _GigaScience_, **in press**.
+ tree clones, _GigaScience_, **6**(10):1--13, 2017.
 
 ==============================
 
